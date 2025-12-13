@@ -1,64 +1,98 @@
-		      inp_north0, inp_north1, inp_north2, inp_north3,
-		      clk, rst, done);
-	
-	input [31:0] inp_west0, inp_west4, inp_west8, inp_west12,
-		      inp_north0, inp_north1, inp_north2, inp_north3;
-	output reg done;
-	input clk, rst;
-	reg [3:0] count;
-	
-	
-	
-	wire [31:0] inp_north0, inp_north1, inp_north2, inp_north3;
-	wire [31:0] inp_west0, inp_west4, inp_west8, inp_west12;
-	wire [31:0] outp_south0, outp_south1, outp_south2, outp_south3, outp_south4, outp_south5, outp_south6, outp_south7, outp_south8, outp_south9, outp_south10, outp_south11, outp_south12, outp_south13, outp_south14, outp_south15;
-	wire [31:0] outp_east0, outp_east1, outp_east2, outp_east3, outp_east4, outp_east5, outp_east6, outp_east7, outp_east8, outp_east9, outp_east10, outp_east11, outp_east12, outp_east13, outp_east14, outp_east15;
-	wire [63:0] result0, result1, result2, result3, result4, result5, result6, result7, result8, result9, result10, result11, result12, result13, result14, result15;
-	
-	
-	
-	//from north and west
-	block P0 (inp_north0, inp_west0, clk, rst, outp_south0, outp_east0, result0);
-	//from north
-	block P1 (inp_north1, outp_east0, clk, rst, outp_south1, outp_east1, result1);
-	block P2 (inp_north2, outp_east1, clk, rst, outp_south2, outp_east2, result2);
-	block P3 (inp_north3, outp_east2, clk, rst, outp_south3, outp_east3, result3);
-	
-	//from west
-	block P4 (outp_south0, inp_west4, clk, rst, outp_south4, outp_east4, result4);
-	block P8 (outp_south4, inp_west8, clk, rst, outp_south8, outp_east8, result8);
-	block P12 (outp_south8, inp_west12, clk, rst, outp_south12, outp_east12, result12);
-	
-	//no direct inputs
-	//second row
-	block P5 (outp_south1, outp_east4, clk, rst, outp_south5, outp_east5, result5);
-	block P6 (outp_south2, outp_east5, clk, rst, outp_south6, outp_east6, result6);
-	block P7 (outp_south3, outp_east6, clk, rst, outp_south7, outp_east7, result7);
-	//third row
-	block P9 (outp_south5, outp_east8, clk, rst, outp_south9, outp_east9, result9);
-	block P10 (outp_south6, outp_east9, clk, rst, outp_south10, outp_east10, result10);
-	block P11 (outp_south7, outp_east10, clk, rst, outp_south11, outp_east11, result11);
-	//fourth row
-	block P13 (outp_south9, outp_east12, clk, rst, outp_south13, outp_east13, result13);
-	block P14 (outp_south10, outp_east13, clk, rst, outp_south14, outp_east14, result14);
-	block P15 (outp_south11, outp_east14, clk, rst, outp_south15, outp_east15, result15);
-	
-	always @(posedge clk or posedge rst) begin
-		if(rst) begin
-			done <= 0;
-			count <= 0;
-		end
-		else begin
-			if(count == 9) begin
-				done <= 1;
-				count <= 0;
-			end
-			else begin
-				done <= 0;
-				count <= count + 1;
-			end
-		end	
-	end 
-	
-		      
+
+module systolic_array(
+    input  wire        clk, rst,
+    input  wire [511:0] inp_west,  // Flattened input (16x32 bits)
+    output wire [63:0]  Re1, Re2, Re3, Re4
+);
+
+    // Unpack the flattened bus into 16 x 32-bit words
+    wire [31:0] inp_west_array [0:15];
+    genvar i;
+    generate
+        for (i = 0; i < 16; i = i + 1)
+            assign inp_west_array[i] = inp_west[(i+1)*32-1 -: 32];
+    endgenerate
+
+    // Internal registers
+    reg [3:0] count;
+    reg [31:0] inP1, inP5, inP9, inP13;
+
+    always @(posedge clk or posedge rst) begin
+        if (rst) begin
+            count <= 4'd0;
+            inP1 <= 0; inP5 <= 0; inP9 <= 0; inP13 <= 0;
+        end else begin
+            count <= count + 1;
+            case (count)
+                0: inP1 <= inp_west_array[0];
+                1: begin 
+                    inP1 <= inp_west_array[1]; 
+                    inP5 <= inp_west_array[4]; 
+                end
+                2: begin 
+                    inP1 <= inp_west_array[2]; 
+                    inP5 <= inp_west_array[5]; 
+                    inP9 <= inp_west_array[8]; 
+                end
+                3: begin 
+                    inP1 <= inp_west_array[3]; 
+                    inP5 <= inp_west_array[6]; 
+                    inP9 <= inp_west_array[9]; 
+                    inP13 <= inp_west_array[12]; 
+                end
+                4: begin 
+                    inP5 <= inp_west_array[7]; 
+                    inP9 <= inp_west_array[10]; 
+                    inP13 <= inp_west_array[13]; 
+                end
+                5: begin 
+                    inP9 <= inp_west_array[11]; 
+                    inP13 <= inp_west_array[14]; 
+                end
+                6: inP13 <= inp_west_array[15];
+                default: ;
+            endcase
+        end
+    end
+
+    // Constant stationary weights
+    wire [31:0] w_b_1  = 32'd1, w_b_2  = 32'd0, w_b_3  = 32'd0, w_b_4  = 32'd0;
+    wire [31:0] w_b_5  = 32'd0, w_b_6  = 32'd1, w_b_7  = 32'd0, w_b_8  = 32'd0;
+    wire [31:0] w_b_9  = 32'd0, w_b_10 = 32'd0, w_b_11 = 32'd1, w_b_12 = 32'd0;
+    wire [31:0] w_b_13 = 32'd0, w_b_14 = 32'd0, w_b_15 = 32'd0, w_b_16 = 32'd1;
+
+    // interconnect wires
+    wire [31:0] R_0_1, R_0_2, R_0_3, R_0_4;
+    wire [31:0] R_1_1, R_1_2, R_1_3, R_1_4;
+    wire [31:0] R_2_1, R_2_2, R_2_3, R_2_4;
+    wire [31:0] R_3_1, R_3_2, R_3_3, R_3_4;
+
+    wire [63:0] C_0_1, C_0_2, C_0_3;
+    wire [63:0] C_1_1, C_1_2, C_1_3;
+    wire [63:0] C_2_1, C_2_2, C_2_3;
+    wire [63:0] C_3_1, C_3_2, C_3_3;
+
+    wire [63:0] p_sum = 64'd0;
+
+    // PE instantiation (unchanged logic)
+    block P1 (clk, rst, p_sum, w_b_1, inP1, R_0_1, C_0_1);
+    block P2 (clk, rst, p_sum, w_b_2, R_0_1, R_0_2, C_1_1);
+    block P3 (clk, rst, p_sum, w_b_3, R_0_2, R_0_3, C_2_1);
+    block P4 (clk, rst, p_sum, w_b_4, R_0_3, R_0_4, C_3_1);
+
+    block P5 (clk, rst, C_0_1, w_b_5, inP5, R_1_1, C_0_2);
+    block P6 (clk, rst, C_1_1, w_b_6, R_1_1, R_1_2, C_1_2);
+    block P7 (clk, rst, C_2_1, w_b_7, R_1_2, R_1_3, C_2_2);
+    block P8 (clk, rst, C_3_1, w_b_8, R_1_3, R_1_4, C_3_2);
+
+    block P9  (clk, rst, C_0_2, w_b_9, inP9, R_2_1, C_0_3);
+    block P10 (clk, rst, C_1_2, w_b_10, R_2_1, R_2_2, C_1_3);
+    block P11 (clk, rst, C_2_2, w_b_11, R_2_2, R_2_3, C_2_3);
+    block P12 (clk, rst, C_3_2, w_b_12, R_2_3, R_2_4, C_3_3);
+
+    block P13 (clk, rst, C_0_3, w_b_13, inP13, R_3_1, Re1);
+    block P14 (clk, rst, C_1_3, w_b_14, R_3_1, R_3_2, Re2);
+    block P15 (clk, rst, C_2_3, w_b_15, R_3_2, R_3_3, Re3);
+    block P16 (clk, rst, C_3_3, w_b_16, R_3_3, R_3_4, Re4);
+
 endmodule
