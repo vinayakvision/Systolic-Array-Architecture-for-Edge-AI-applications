@@ -1,18 +1,18 @@
-module block(
-    input        clk, rst,
-    input [63:0] p_sum,
-    input [31:0] w_b,
-    input [31:0] inp_west,
-    output reg [31:0] outp_east,
-    output reg [63:0] result
-);
-    wire [63:0] mult = w_b * inp_west;
+module block(p_sum, w_b, inp_west, clk, rst, outp_east, result);
+    input [31:0] w_b, inp_west;
+    input [63:0] p_sum;
+    input clk, rst;
+    output reg [31:0] outp_east;
+    output reg [63:0] result;
+    
+    wire [63:0] mult = inp_west * w_b; 
+    
     always @(posedge clk or posedge rst) begin
-        if (rst) begin
-            result    <= 64'd0;
-            outp_east <= 32'd0;
+        if(rst) begin
+            result <= 0;
+            outp_east <= 0;
         end else begin
-            result    <= p_sum + mult;
+            result <= p_sum + mult; 
             outp_east <= inp_west;
         end
     end
