@@ -1,77 +1,62 @@
-module systolic_array_simple_tb;
+// Code your testbench here
+// or browse Examples
+`timescale 1ns / 1ps
 
-    localparam CLK_PERIOD = 10;
+module tb_systolic_array();
+    reg clk, rst, load_trigger, mem_we;
+    reg [3:0] mem_addr;
+    reg [31:0] weight_din, act_din;
+    wire [63:0] Re1, Re2, Re3, Re4;
 
-    reg tb_clk;
-    reg tb_rst;
-    reg [511:0] tb_inp_west;
-
-    wire [63:0] tb_Re1, tb_Re2, tb_Re3, tb_Re4;
-
-    // Instantiate DUT
-    systolic_array DUT (
-        .inp_west(tb_inp_west),
-        .clk(tb_clk),
-        .rst(tb_rst),
-        .Re1(tb_Re1),
-        .Re2(tb_Re2),
-        .Re3(tb_Re3),
-        .Re4(tb_Re4)
+    systolic_array uut (
+        .clk(clk), .rst(rst), .load_trigger(load_trigger),
+        .mem_we(mem_we), .mem_addr(mem_addr),
+        .weight_din(weight_din), .act_din(act_din),
+        .Re1(Re1), .Re2(Re2), .Re3(Re3), .Re4(Re4)
     );
 
-    // Clock generation
-    initial begin
-        tb_clk = 0;
-        forever #(CLK_PERIOD/2) tb_clk = ~tb_clk;
-    end
-
-    // Main Test Sequence
-    initial begin
-        $display("=== Starting Systolic Array Simulation ===");
-
-        tb_rst = 1;
-        tb_inp_west = 512'd0;
-
-        tb_inp_west[(0*32)+:32]  = 32'd1;
-        tb_inp_west[(1*32)+:32]  = 32'd2;
-        tb_inp_west[(2*32)+:32]  = 32'd3;
-        tb_inp_west[(3*32)+:32]  = 32'd4;
-        tb_inp_west[(4*32)+:32]  = 32'd5;
-        tb_inp_west[(5*32)+:32]  = 32'd6;
-        tb_inp_west[(6*32)+:32]  = 32'd7;
-        tb_inp_west[(7*32)+:32]  = 32'd8;
-        tb_inp_west[(8*32)+:32]  = 32'd9;
-        tb_inp_west[(9*32)+:32]  = 32'd10;
-        tb_inp_west[(10*32)+:32] = 32'd11;
-        tb_inp_west[(11*32)+:32] = 32'd12;
-        tb_inp_west[(12*32)+:32] = 32'd13;
-        tb_inp_west[(13*32)+:32] = 32'd14;
-        tb_inp_west[(14*32)+:32] = 32'd15;
-        tb_inp_west[(15*32)+:32] = 32'd16;
-
-        @(posedge tb_clk);
-        tb_rst = 0;
-
-        // wait enough cycles for all 16 elements to propagate through the systolic network
-        repeat(18) @(posedge tb_clk);
-
-        $display("\n=== FINAL OUTPUTS AFTER STABLE PROPAGATION ===");
-        $display("Re1 = %0d", tb_Re1);
-        $display("Re2 = %0d", tb_Re2);
-        $display("Re3 = %0d", tb_Re3);
-        $display("Re4 = %0d", tb_Re4);
-
-        if(tb_Re1==1 && tb_Re2==6 && tb_Re3==11 && tb_Re4==16)
-            $display("\nTEST PASSED  - Systolic array outputs match expected values.");
-        else
-            $display("\nTEST FAILED  - Outputs incorrect.");
-
-        #20 $finish;
-    end
+    always #5 clk = ~clk;
 
     initial begin
-        $dumpfile("dump.vcd");
-        $dumpvars;
+        // --- Step 1: Initialize ---
+        clk = 0; rst = 1; load_trigger = 0; mem_we = 0;
+        #20 rst = 0;
+
+        // --- Step 2: Write to SRAMs ---
+        for (integer i = 0; i < 16; i = i + 1) begin
+            @(posedge clk);
+            mem_we = 1; mem_addr = i;
+            weight_din = i+1;
+            act_din = i + 1; // 1 to 16
+        end
+        @(posedge clk); mem_we = 0;
+
+        // --- Step 3: Trigger Internal Load ---
+        #10;
+        @(posedge clk); load_trigger = 1;
+        wait(uut.loaded == 1);
+        @(posedge clk); load_trigger = 0;
+
+        // --- Step 4: Run Simulation ---
+        repeat (25) @(posedge clk);
+        $display("Simulation Complete.");
+        $finish;
     end
 
+    // Use $strobe to align terminal output with Waveform exactly
+    initial begin
+        $display("Time | Count | Re1 | Re2 | Re3 | Re4");
+        forever begin
+            @(posedge clk);
+            if (uut.loaded || Re1 != 0 || Re4 != 0)
+                $strobe("%4t | %5d | %3d | %3d | %3d | %3d", 
+                         $time, uut.count, Re1, Re2, Re3, Re4);
+        end
+     
+    end
+  
+  initial begin
+   $dumpfile("dump.vcd"); $dumpvars;
+  end
+  
 endmodule
