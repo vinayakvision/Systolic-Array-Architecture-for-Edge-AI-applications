@@ -1,0 +1,313 @@
+
+module systolic_control (
+    input  logic        clk,
+    input  logic        rst,
+    input  logic        start,
+    input  logic        mem_we,
+    input  logic [3:0]  mem_addr,
+    input  logic [31:0] weight_din,
+    input  logic [31:0] act_din,
+    input  logic [4:0]  layer_scale,
+
+    /* -------- Data from top-level SRAM / codec -------- */
+    input  logic signed [31:0] w32_from_sram,
+    input  logic [31:0]        act_from_sram,
+
+    /* -------- Address / control to SRAMs -------- */
+    output logic [3:0]         sram_addr,
+    output logic               sram_we,
+
+    /* -------- Outputs to systolic core -------- */
+    output logic [31:0] inP1, inP5, inP9, inP13,
+    output logic [511:0] weight_flat_out,
+    output logic        done
+);
+
+    /* ================= FSM ================= */
+    typedef enum logic [2:0] {
+        IDLE, FETCH_ADDR, FETCH_DATA, EXECUTE, CAPTURE, DONE
+    } state_t;
+
+    state_t state, state_n;
+
+    logic [3:0] addr,  addr_n;
+    logic [3:0] count, count_n;
+
+    logic [31:0] inP1_n, inP5_n, inP9_n, inP13_n;
+    logic        done_n;
+
+    /* ================= STORAGE ================= */
+    logic [31:0] weight_reg [0:15];
+    logic [31:0] act_reg    [0:15];
+
+    /* ================= PACKING ================= */
+    assign weight_flat_out = {
+        weight_reg[15], weight_reg[14], weight_reg[13], weight_reg[12],
+        weight_reg[11], weight_reg[10], weight_reg[9],  weight_reg[8],
+        weight_reg[7],  weight_reg[6],  weight_reg[5],  weight_reg[4],
+        weight_reg[3],  weight_reg[2],  weight_reg[1],  weight_reg[0]
+    };
+
+    /* ================= SEQUENTIAL ================= */
+    always_ff @(posedge clk or posedge rst) begin
+        if (rst) begin
+            state  <= IDLE;
+            addr   <= 4'd0;
+            count  <= 4'd0;
+            done   <= 1'b0;
+            inP1   <= 32'sd0;
+            inP5   <= 32'sd0;
+            inP9   <= 32'sd0;
+            inP13  <= 32'sd0;
+        end else begin
+            state  <= state_n;
+            addr   <= addr_n;
+            count  <= count_n;
+            done   <= done_n;
+            inP1   <= inP1_n;
+            inP5   <= inP5_n;
+            inP9   <= inP9_n;
+            inP13  <= inP13_n;
+        end
+    end
+
+    /* ================= COMBINATIONAL FSM ================= */
+    always_comb begin
+        /* ---------- defaults ---------- */
+        state_n   = state;
+        addr_n    = addr;
+        count_n   = count;
+        done_n    = 1'b0;
+
+        inP1_n    = inP1;
+        inP5_n    = inP5;
+        inP9_n    = inP9;
+        inP13_n   = inP13;
+
+        sram_addr = addr;
+        sram_we   = 1'b0;
+
+        case (state)
+
+            /* ---------- IDLE ---------- */
+            IDLE: begin
+                if (start) begin
+                    addr_n  = 4'd0;
+                    count_n = 4'd0;
+                    state_n = FETCH_ADDR;
+                end
+            end
+
+            /* ---------- FETCH ADDR ---------- */
+            FETCH_ADDR: begin
+                sram_addr = addr;
+                state_n   = FETCH_DATA;
+            end
+
+            /* ---------- FETCH DATA ---------- */
+            FETCH_DATA: begin
+                /* capture SRAM outputs */
+                weight_reg[addr] = w32_from_sram;
+                act_reg[addr]    = act_from_sram;
+
+                if (addr == 4'd15) begin
+                    addr_n  = 4'd0;
+                    count_n = 4'd0;
+                    state_n = EXECUTE;
+                end else begin
+                    addr_n  = addr + 4'd1;
+                    state_n = FETCH_ADDR;
+                end
+            end
+
+            /* ---------- EXECUTE ---------- */
+            EXECUTE: begin
+                case (count)
+                    0:  inP1_n  = act_reg[0];
+                    1:  begin inP1_n = act_reg[4];  inP5_n = act_reg[1];  end
+                    2:  begin inP1_n = act_reg[8];  inP5_n = act_reg[5];  inP9_n  = act_reg[2];  end
+                    3:  begin inP1_n = act_reg[12]; inP5_n = act_reg[9];  inP9_n  = act_reg[6];  inP13_n = act_reg[3];  end
+                    4:  begin inP1_n = 32'sd0;      inP5_n = act_reg[13]; inP9_n  = act_reg[10]; inP13_n = act_reg[7];  end
+                    5:  begin inP5_n = 32'sd0;      inP9_n = act_reg[14]; inP13_n = act_reg[11]; end
+                    6:  begin inP9_n = 32'sd0;      inP13_n = act_reg[15]; end
+                    7:  begin inP13_n = 32'sd0;     state_n = CAPTURE;    end
+                    default: ;
+                endcase
+
+                if (count != 4'd7)
+                    count_n = count + 4'd1;
+            end
+
+            /* ---------- CAPTURE ---------- */
+            CAPTURE: begin
+                state_n = DONE;
+            end
+
+            /* ---------- DONE ---------- */
+            DONE: begin
+                done_n  = 1'b1;
+                state_n = IDLE;
+            end
+
+            default: state_n = IDLE;
+
+        endcase
+    end
+
+endmodule
+module systolic_control (
+    input  logic        clk,
+    input  logic        rst,
+    input  logic        start,
+    input  logic        mem_we,
+    input  logic [3:0]  mem_addr,
+    input  logic [31:0] weight_din,
+    input  logic [31:0] act_din,
+    input  logic [4:0]  layer_scale,
+
+    /* -------- Data from top-level SRAM / codec -------- */
+    input  logic signed [31:0] w32_from_sram,
+    input  logic [31:0]        act_from_sram,
+
+    /* -------- Address / control to SRAMs -------- */
+    output logic [3:0]         sram_addr,
+    output logic               sram_we,
+
+    /* -------- Outputs to systolic core -------- */
+    output logic [31:0] inP1, inP5, inP9, inP13,
+    output logic [511:0] weight_flat_out,
+    output logic        done
+);
+
+    /* ================= FSM ================= */
+    typedef enum logic [2:0] {
+        IDLE, FETCH_ADDR, FETCH_DATA, EXECUTE, CAPTURE, DONE
+    } state_t;
+
+    state_t state, state_n;
+
+    logic [3:0] addr,  addr_n;
+    logic [3:0] count, count_n;
+
+    logic [31:0] inP1_n, inP5_n, inP9_n, inP13_n;
+    logic        done_n;
+
+    /* ================= STORAGE ================= */
+    logic [31:0] weight_reg [0:15];
+    logic [31:0] act_reg    [0:15];
+
+    /* ================= PACKING ================= */
+    assign weight_flat_out = {
+        weight_reg[15], weight_reg[14], weight_reg[13], weight_reg[12],
+        weight_reg[11], weight_reg[10], weight_reg[9],  weight_reg[8],
+        weight_reg[7],  weight_reg[6],  weight_reg[5],  weight_reg[4],
+        weight_reg[3],  weight_reg[2],  weight_reg[1],  weight_reg[0]
+    };
+
+    /* ================= SEQUENTIAL ================= */
+    always_ff @(posedge clk or posedge rst) begin
+        if (rst) begin
+            state  <= IDLE;
+            addr   <= 4'd0;
+            count  <= 4'd0;
+            done   <= 1'b0;
+            inP1   <= 32'sd0;
+            inP5   <= 32'sd0;
+            inP9   <= 32'sd0;
+            inP13  <= 32'sd0;
+        end else begin
+            state  <= state_n;
+            addr   <= addr_n;
+            count  <= count_n;
+            done   <= done_n;
+            inP1   <= inP1_n;
+            inP5   <= inP5_n;
+            inP9   <= inP9_n;
+            inP13  <= inP13_n;
+        end
+    end
+
+    /* ================= COMBINATIONAL FSM ================= */
+    always_comb begin
+        /* ---------- defaults ---------- */
+        state_n   = state;
+        addr_n    = addr;
+        count_n   = count;
+        done_n    = 1'b0;
+
+        inP1_n    = inP1;
+        inP5_n    = inP5;
+        inP9_n    = inP9;
+        inP13_n   = inP13;
+
+        sram_addr = addr;
+        sram_we   = 1'b0;
+
+        case (state)
+
+            /* ---------- IDLE ---------- */
+            IDLE: begin
+                if (start) begin
+                    addr_n  = 4'd0;
+                    count_n = 4'd0;
+                    state_n = FETCH_ADDR;
+                end
+            end
+
+            /* ---------- FETCH ADDR ---------- */
+            FETCH_ADDR: begin
+                sram_addr = addr;
+                state_n   = FETCH_DATA;
+            end
+
+            /* ---------- FETCH DATA ---------- */
+            FETCH_DATA: begin
+                /* capture SRAM outputs */
+                weight_reg[addr] = w32_from_sram;
+                act_reg[addr]    = act_from_sram;
+
+                if (addr == 4'd15) begin
+                    addr_n  = 4'd0;
+                    count_n = 4'd0;
+                    state_n = EXECUTE;
+                end else begin
+                    addr_n  = addr + 4'd1;
+                    state_n = FETCH_ADDR;
+                end
+            end
+
+            /* ---------- EXECUTE ---------- */
+            EXECUTE: begin
+                case (count)
+                    0:  inP1_n  = act_reg[0];
+                    1:  begin inP1_n = act_reg[4];  inP5_n = act_reg[1];  end
+                    2:  begin inP1_n = act_reg[8];  inP5_n = act_reg[5];  inP9_n  = act_reg[2];  end
+                    3:  begin inP1_n = act_reg[12]; inP5_n = act_reg[9];  inP9_n  = act_reg[6];  inP13_n = act_reg[3];  end
+                    4:  begin inP1_n = 32'sd0;      inP5_n = act_reg[13]; inP9_n  = act_reg[10]; inP13_n = act_reg[7];  end
+                    5:  begin inP5_n = 32'sd0;      inP9_n = act_reg[14]; inP13_n = act_reg[11]; end
+                    6:  begin inP9_n = 32'sd0;      inP13_n = act_reg[15]; end
+                    7:  begin inP13_n = 32'sd0;     state_n = CAPTURE;    end
+                    default: ;
+                endcase
+
+                if (count != 4'd7)
+                    count_n = count + 4'd1;
+            end
+
+            /* ---------- CAPTURE ---------- */
+            CAPTURE: begin
+                state_n = DONE;
+            end
+
+            /* ---------- DONE ---------- */
+            DONE: begin
+                done_n  = 1'b1;
+                state_n = IDLE;
+            end
+
+            default: state_n = IDLE;
+
+        endcase
+    end
+
+endmodule

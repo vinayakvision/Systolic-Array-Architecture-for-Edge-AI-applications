@@ -1,0 +1,64 @@
+module block (
+    input  logic signed [63:0] p_sum,
+    input  logic signed [31:0] w_b,
+    input  logic signed [31:0] inp_west,
+    input  logic               clk,
+    input  logic               rst,
+    output logic signed [31:0] outp_east,
+    output logic signed [63:0] result
+);
+
+    logic signed [64:0] a;        // extra bit for sign safety
+    logic signed [64:0] mult;
+
+    always_comb begin
+        // sign-extend activation
+        a = {inp_west[31], inp_west, 32'd0} >>> 32;
+
+        // FULL 32-bit signed shift-add multiplication
+        mult =
+            (w_b[0]  ? (a <<< 0)  : 65'sd0) +
+            (w_b[1]  ? (a <<< 1)  : 65'sd0) +
+            (w_b[2]  ? (a <<< 2)  : 65'sd0) +
+            (w_b[3]  ? (a <<< 3)  : 65'sd0) +
+            (w_b[4]  ? (a <<< 4)  : 65'sd0) +
+            (w_b[5]  ? (a <<< 5)  : 65'sd0) +
+            (w_b[6]  ? (a <<< 6)  : 65'sd0) +
+            (w_b[7]  ? (a <<< 7)  : 65'sd0) +
+            (w_b[8]  ? (a <<< 8)  : 65'sd0) +
+            (w_b[9]  ? (a <<< 9)  : 65'sd0) +
+            (w_b[10] ? (a <<< 10) : 65'sd0) +
+            (w_b[11] ? (a <<< 11) : 65'sd0) +
+            (w_b[12] ? (a <<< 12) : 65'sd0) +
+            (w_b[13] ? (a <<< 13) : 65'sd0) +
+            (w_b[14] ? (a <<< 14) : 65'sd0) +
+            (w_b[15] ? (a <<< 15) : 65'sd0) +
+            (w_b[16] ? (a <<< 16) : 65'sd0) +
+            (w_b[17] ? (a <<< 17) : 65'sd0) +
+            (w_b[18] ? (a <<< 18) : 65'sd0) +
+            (w_b[19] ? (a <<< 19) : 65'sd0) +
+            (w_b[20] ? (a <<< 20) : 65'sd0) +
+            (w_b[21] ? (a <<< 21) : 65'sd0) +
+            (w_b[22] ? (a <<< 22) : 65'sd0) +
+            (w_b[23] ? (a <<< 23) : 65'sd0) +
+            (w_b[24] ? (a <<< 24) : 65'sd0) +
+            (w_b[25] ? (a <<< 25) : 65'sd0) +
+            (w_b[26] ? (a <<< 26) : 65'sd0) +
+            (w_b[27] ? (a <<< 27) : 65'sd0) +
+            (w_b[28] ? (a <<< 28) : 65'sd0) +
+            (w_b[29] ? (a <<< 29) : 65'sd0) +
+            (w_b[30] ? (a <<< 30) : 65'sd0) -
+            (w_b[31] ? (a <<< 31) : 65'sd0); // 🔥 sign bit handled explicitly
+    end
+
+    always_ff @(posedge clk or posedge rst) begin
+        if (rst) begin
+            result    <= 64'sd0;
+            outp_east <= 32'sd0;
+        end else begin
+            result    <= p_sum + mult[63:0];
+            outp_east <= inp_west;
+        end
+    end
+
+endmodule

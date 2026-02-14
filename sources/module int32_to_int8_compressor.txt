@@ -1,0 +1,23 @@
+module int32_to_int8_compressor (
+    input  logic signed [31:0] in_w,
+    input  logic [4:0]         scale,   // shift amount
+    output logic signed [7:0]  out_w
+);
+    logic signed [32:0] sum_ext;
+    logic signed [31:0] q;
+    logic signed [32:0] round_ext;
+
+    assign round_ext =
+        (scale != 0) ? (33'sd1 <<< (scale-1)) : 33'sd0;
+
+    assign sum_ext =
+        $signed({in_w[31], in_w}) + round_ext;
+
+    assign q = sum_ext >>> scale;
+
+    always_comb begin
+        if      (q >  32'sd127) out_w =  8'sd127;
+        else if (q < -32'sd128) out_w = -8'sd128;
+        else                    out_w = q[7:0];
+    end
+endmodule

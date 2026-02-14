@@ -1,0 +1,92 @@
+module systolic_top (
+    input  logic        clk,
+    input  logic        rst,
+    input  logic        start,
+    input  logic        mem_we,
+    input  logic [3:0]  mem_addr,
+    input  logic [31:0] weight_din,
+    input  logic [31:0] act_din,
+    input  logic [4:0]  layer_scale,
+
+    output logic        done,
+    output logic [63:0] Re1, Re2, Re3, Re4
+);
+
+    /* ---------------- Control ↔ Core ---------------- */
+    logic [31:0]  inP1, inP5, inP9, inP13;
+    logic [511:0] weight_flat;
+
+    /* ---------------- SRAM / Codec Wiring ---------------- */
+    logic [3:0]  sram_addr;
+    logic        sram_we;
+
+    logic signed [7:0]   w8;
+    logic signed [15:0]  w8_ext;
+    logic signed [15:0]  w8_sram;
+    logic signed [7:0]   w8_sel;
+    logic signed [31:0]  w32;
+
+    logic [31:0] act_sram_out;
+
+    assign w8_ext = {{8{w8[7]}}, w8};
+    assign w8_sel = sram_addr[0] ? w8_sram[15:8] : w8_sram[7:0];
+
+    /* ---------------- Codec ---------------- */
+    int32_to_int8_compressor COMP (
+        .in_w(weight_din),
+        .scale(layer_scale),
+        .out_w(w8)
+    );
+
+    int8_to_int32_decompressor DECOMP (
+        .in_w(w8_sel),
+        .scale(layer_scale),
+        .out_w(w32)
+    );
+
+    /* ---------------- SRAMs ---------------- */
+    asic_sram_macro #(16,4) W_SRAM (
+        .clk (clk),
+        .cs  (1'b1),
+        .we  (mem_we | sram_we),
+        .addr(mem_we ? mem_addr : sram_addr),
+        .din (w8_ext),
+        .dout(w8_sram)
+    );
+
+    asic_sram_macro #(32,4) A_SRAM (
+        .clk (clk),
+        .cs  (1'b1),
+        .we  (mem_we),
+        .addr(mem_we ? mem_addr : sram_addr),
+        .din (act_din),
+        .dout(act_sram_out)
+    );
+
+    /* ---------------- Control ---------------- */
+    systolic_control CTRL (
+        .clk(clk), .rst(rst), .start(start),
+        .mem_we(mem_we), .mem_addr(mem_addr),
+        .weight_din(weight_din), .act_din(act_din),
+        .layer_scale(layer_scale),
+
+        .w32_from_sram(w32),
+        .act_from_sram(act_sram_out),
+        .sram_addr(sram_addr),
+        .sram_we(sram_we),
+
+        .inP1(inP1), .inP5(inP5), .inP9(inP9), .inP13(inP13),
+        .weight_flat_out(weight_flat),
+        .done(done)
+    );
+
+    /* ---------------- Core ---------------- */
+    systolic_core CORE (
+        .clk(clk), .rst(rst),
+        .inP1(inP1), .inP5(inP5),
+        .inP9(inP9), .inP13(inP13),
+        .weight_flat(weight_flat),
+        .Re1(Re1), .Re2(Re2), .Re3(Re3), .Re4(Re4)
+    );
+
+endmodule

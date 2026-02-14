@@ -1,0 +1,113 @@
+module asic_sram_macro #(
+    parameter int DATA_W = 32,
+    parameter int ADDR_W = 4
+)(
+    input  logic               clk,
+    input  logic               cs,
+    input  logic               we,
+    input  logic [ADDR_W-1:0]  addr,
+    input  logic [DATA_W-1:0]  din,
+    output logic [DATA_W-1:0]  dout
+);
+
+`ifdef SYNTHESIS
+/* ============================================================
+   REAL SRAM MACRO (SYNTHESIS)
+   ============================================================ */
+generate
+
+/* ---------------- 16-bit WEIGHT SRAM ----------------
+   One word = {weight_hi[7:0], weight_lo[7:0]}
+   Byte packing handled OUTSIDE macro
+------------------------------------------------------ */
+if (DATA_W == 16) begin : GEN_WEIGHT_MACRO
+
+    ram_128x16A u_weight_sram (
+        .CLK (clk),
+        .CEN (~cs),
+        .OEN (1'b0),
+        .WEN (~we),
+        .A   (addr),
+        .D   (din),
+        .Q   (dout)
+    );
+
+end
+
+/* ---------------- 32-bit ACTIVATION SRAM ----------------
+   Built from two 16-bit macros
+---------------------------------------------------------- */
+else if (DATA_W == 32) begin : GEN_ACT_MACRO
+
+    ram_128x16A u_act_lo (
+        .CLK (clk),
+        .CEN (~cs),
+        .OEN (1'b0),
+        .WEN (~we),
+        .A   (addr),
+        .D   (din[15:0]),
+        .Q   (dout[15:0])
+    );
+
+    ram_128x16A u_act_hi (
+        .CLK (clk),
+        .CEN (~cs),
+        .OEN (1'b0),
+        .WEN (~we),
+        .A   (addr),
+        .D   (din[31:16]),
+        .Q   (dout[31:16])
+    );
+
+end
+
+endgenerate
+
+`else
+/* ============================================================
+   BEHAVIORAL SRAM (SIMULATION)
+   ============================================================ */
+
+logic [DATA_W-1:0] mem [0:(1<<ADDR_W)-1];
+
+/* -------- WEIGHT SRAM : 2 × int8 packed into 16 bits -------- */
+if (DATA_W == 16) begin : GEN_16BIT_PACKING
+
+    localparam int WORD_AW = (ADDR_W > 1) ? (ADDR_W-1) : 1;
+
+    logic                  word_sel;    // addr[0]
+    logic [WORD_AW-1:0]     word_addr;   // addr[ADDR_W-1:1]
+
+    assign word_sel  = addr[0];
+    assign word_addr = addr[ADDR_W-1:1];
+
+    always_ff @(posedge clk) begin
+        if (cs) begin
+            if (we) begin
+                if (!word_sel)
+                    mem[word_addr][7:0]  <= din[7:0];
+                else
+                    mem[word_addr][15:8] <= din[7:0];
+            end
+            dout <= mem[word_addr];
+        end
+    end
+
+end
+
+/* -------- DEFAULT SRAM (32-bit activations) -------- */
+else begin : GEN_DEFAULT_SRAM
+
+    always_ff @(posedge clk) begin
+        if (cs) begin
+            if (we)
+                mem[addr] <= din;
+            dout <= mem[addr];
+        end
+    end
+
+end
+
+`endif
+
+endmodule
