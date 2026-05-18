@@ -1,0 +1,52 @@
+
+
+Working Directory = /home/vlsi_S34/Desktop/temp1/work/work
+QoS Summary for systolic_array
+==========================================================================================
+Metric                          generic         map             syn_opt_incr    final          
+==========================================================================================
+Slack (ps):                     8,777           2,397           2,393           2,393
+  R2R (ps):                     8,777           2,397           2,393           2,393
+  I2R (ps):                     9,784           9,119           9,119           9,119
+  R2O (ps):                    10,422          10,336          10,336          10,336
+  I2O (ps):                  no_value        no_value        no_value        no_value
+  CG  (ps):                  no_value        no_value        no_value        no_value
+TNS (ps):                           0               0               0               0
+  R2R (ps):                         0               0               0               0
+  I2R (ps):                         0               0               0               0
+  R2O (ps):                         0               0               0               0
+  I2O (ps):                  no_value        no_value        no_value        no_value
+  CG  (ps):                  no_value        no_value        no_value        no_value
+Failing Paths:                      0               0               0               0
+Leakage Power (nW):           586,750         546,267         540,980         540,980
+Cell Area:                    378,854         128,780         128,476         128,476
+Total Cell Area:              378,854         128,780         128,476         128,476
+Leaf Instances:                44,887          12,326          12,309          12,309
+Total Instances:               44,887          12,326          12,309          12,309
+Utilization (%):                 0.00            0.00            0.00            0.00
+Tot. Net Length (um):        no_value        no_value        no_value        no_value
+Avg. Net Length (um):        no_value        no_value        no_value        no_value
+Route Overflow H (%):        no_value        no_value        no_value        no_value
+Route Overflow V (%):        no_value        no_value        no_value        no_value
+MBCI(%) (bits/gate) :            0.00            0.00            0.00            0.00
+Norm Cong Hotspot Area:
+  Max Cong:                  no_value        no_value        no_value        no_value
+  Tot Cong:                  no_value        no_value        no_value        no_value
+==========================================================================================
+CPU  Runtime (h:m:s):        00:32:38        00:31:52        00:30:21        00:30:02
+Real Runtime (h:m:s):        00:32:43        00:30:56        00:30:20        00:30:03
+CPU  Elapsed (h:m:s):        00:32:46        00:34:37        00:34:57        00:34:59
+Real Elapsed (h:m:s):        00:32:48        00:33:43        00:34:02        00:34:05
+Memory (MB):                  1371.04         1407.17         1371.16         1396.16
+==========================================================================================
+==========================================================================================
+Flow Settings:
+==========================================================================================
+Total Runtime (h:m:s): 00:34:04
+Total Memory (MB):     1396.16
+Executable Version:    20.11-s111_1
+==========================================================================================
+Total Cell Area =  Cell Area + Physical Cell Area
+Total Instances =  Leaf Instances + Physical Instances
+
+
