@@ -1,0 +1,2 @@
+**ERROR: (TCLCMD-1022):	Property 'timing_status' is not supported for object type 'db port'
+**ERROR: (TCLCMD-917):	Cannot find 'ports' that match '*'

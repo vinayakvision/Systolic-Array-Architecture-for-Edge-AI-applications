@@ -1,0 +1,21 @@
+    Hinst Name       Module Name                                Inst Count           Total Area
+--------------------------------------------------------------------------------------------
+systolic_array                                                       13691           136854.332
+ A_SRAM              asic_sram_macro_DATA_W16_ADDR_W4_1                532             7248.074
+ P1                  block_DATA_W16_ACC_W32_SIGNED_ARITH0              666             5909.875
+ P10                 block_DATA_W16_ACC_W32_SIGNED_ARITH0_15_81        653             6345.093
+ P11                 block_DATA_W16_ACC_W32_SIGNED_ARITH0_15_82        653             6340.551
+ P12                 block_DATA_W16_ACC_W32_SIGNED_ARITH0_15_83        668             6462.412
+ P13                 block_DATA_W16_ACC_W32_SIGNED_ARITH0_15_84        652             6387.479
+ P14                 block_DATA_W16_ACC_W32_SIGNED_ARITH0_15_85        651             6385.208
+ P15                 block_DATA_W16_ACC_W32_SIGNED_ARITH0_15_86        653             6395.048
+ P16                 block_DATA_W16_ACC_W32_SIGNED_ARITH0_15           666             6513.124
+ P2                  block_DATA_W16_ACC_W32_SIGNED_ARITH0_75           662             5902.306
+ P3                  block_DATA_W16_ACC_W32_SIGNED_ARITH0_74           660             5904.577
+ P4                  block_DATA_W16_ACC_W32_SIGNED_ARITH0_73           674             6024.167
+ P5                  block_DATA_W16_ACC_W32_SIGNED_ARITH0_15_76        655             6353.419
+ P6                  block_DATA_W16_ACC_W32_SIGNED_ARITH0_15_77        655             6349.634
+ P7                  block_DATA_W16_ACC_W32_SIGNED_ARITH0_15_78        652             6338.281
+ P8                  block_DATA_W16_ACC_W32_SIGNED_ARITH0_15_79        663             6456.357
+ P9                  block_DATA_W16_ACC_W32_SIGNED_ARITH0_15_80        659             6364.772
+ W_SRAM              asic_sram_macro_DATA_W16_ADDR_W4                  557             7425.946
