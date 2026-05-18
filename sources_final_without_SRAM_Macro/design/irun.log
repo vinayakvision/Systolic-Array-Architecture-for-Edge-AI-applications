@@ -1,0 +1,96 @@
+irun(64): 15.20-s086: (c) Copyright 1995-2020 Cadence Design Systems, Inc.
+TOOL:	irun(64)	15.20-s086: Started on May 14, 2026 at 10:10:49 IST
+irun
+	-access +rwc
+	pe.v
+	sram.v
+	systolic_array.v
+	systolic_top_tb.v
+file: pe.v
+	module worklib.block:v
+		errors: 0, warnings: 0
+file: sram.v
+	module worklib.asic_sram_macro:v
+		errors: 0, warnings: 0
+file: systolic_array.v
+	module worklib.systolic_array:v
+		errors: 0, warnings: 0
+file: systolic_top_tb.v
+	module worklib.tb_systolic_array:v
+		errors: 0, warnings: 0
+		Caching library 'worklib' ....... Done
+	Elaborating the design hierarchy:
+	Top level design units:
+		tb_systolic_array
+	Building instance overlay tables: .................... Done
+	Generating native compiled code:
+		worklib.asic_sram_macro:v <0x1902131b>
+			streams:   6, words:  1899
+		worklib.block:v <0x7aadbec1>
+			streams:   4, words:  1409
+		worklib.systolic_array:v <0x6a098487>
+			streams:  46, words: 24975
+		worklib.tb_systolic_array:v <0x5596bd85>
+			streams:  15, words: 28776
+	Building instance specific data structures.
+	Loading native compiled code:     .................... Done
+	Design hierarchy summary:
+		              Instances  Unique
+		Modules:             20       4
+		Registers:           62      30
+		Scalar wires:        33       -
+		Vectored wires:      82       -
+		Always blocks:       22       5
+		Initial blocks:       5       5
+		Cont. assignments:   22       9
+		Pseudo assignments:  32      32
+	Writing initial simulation snapshot: worklib.tb_systolic_array:v
+Loading snapshot worklib.tb_systolic_array:v .................... Done
+ncsim> source /home/installs/INCISIVE152/tools/inca/files/ncsimrc
+ncsim> run
+------------------------------------------------------------------
+ Time    RValid  Ready    Re1        Re2        Re3        Re4
+------------------------------------------------------------------
+   416     0       0          0          0          0          0
+   426     0       0          0          0          0          0
+   436     0       0          0          0          0          0
+   446     0       0          0          0          0          0
+   456     0       0          0          0          0          0
+   466     0       0          1          0          0          0
+   476     0       0          5          2          0          0
+   486     0       0          9          6          3          0
+   496     0       0         13         10          7          4
+   506     0       0          0         14         11          8
+   516     0       0          0          0         15         12
+   526     0       0          0          0          0         16
+   536     0       0          0          0          0          0
+   546     1       1          0          0          0          0
+   556     1       1          0          0          0          0
+
+--- RESULT CHECK ---
+? FAIL:
+  Re1 = 0  (expected 150)
+  Re2 = 0  (expected 382)
+  Re3 = 0  (expected 614)
+  Re4 = 0  (expected 846)
+--------------------
+
+   566     1       1          0          0          0          0
+   576     1       1          0          0          0          0
+   586     1       1          0          0          0          0
+   596     1       1          0          0          0          0
+   606     1       1          0          0          0          0
+   616     1       1          0          0          0          0
+   626     1       1          0          0          0          0
+   636     1       1          0          0          0          0
+
+Simulation Finished
+
+Simulation stopped via $stop(1) at time 645 NS + 0
+./systolic_top_tb.v:129         $stop;
+ncsim> simvision wave.shm
+
+-------------------------------------
+Relinquished control to SimVision...
+ncsim> 
+ncsim> 
